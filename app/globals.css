@@ -1,26 +1,145 @@
+/* globals.css — Tailwind CSS v4+ dark theme (turquoise + blue)
+   Works best when you use classes like: bg-[--color-bg] text-[--color-fg]
+*/
+
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Design tokens (Tailwind v4+) */
+@theme {
+  /* Neutrals */
+  --color-bg: oklch(0.13 0.03 255);
+  /* deep blue-black */
+  --color-fg: oklch(0.95 0.02 240);
+  /* near-white */
+  --color-muted: oklch(0.72 0.03 250);
+  /* muted text */
+  --color-muted-2: oklch(0.58 0.04 250);
+  /* secondary muted */
+  --color-border: oklch(0.26 0.03 255);
+  /* subtle borders */
+  --color-card: oklch(0.17 0.035 255);
+  /* card surface */
+  --color-card-2: oklch(0.20 0.035 255);
+  /* elevated card */
+
+  /* Brand colors */
+  --color-primary: oklch(0.78 0.14 190);
+  /* turquoise */
+  --color-primary-2: oklch(0.70 0.13 190);
+  /* darker turquoise */
+  --color-secondary: oklch(0.62 0.16 255);
+  /* blue */
+  --color-secondary-2: oklch(0.54 0.15 255);
+  /* darker blue */
+
+  /* UI helpers */
+  --color-ring: var(--color-primary);
+  --color-danger: oklch(0.65 0.20 25);
+  --radius: 0.95rem;
+
+  /* Shadows */
+  --shadow-soft: 0 10px 30px oklch(0 0 0 / 0.35);
+  --shadow-inset: inset 0 1px 0 oklch(0.98 0.01 240 / 0.06);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+/* Base styles */
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-feature-settings: "ss01" 1, "ss02" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Improve default focus visibility */
+  :where(a, button, input, textarea, select, [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-ring) 85%, white 15%);
+    outline-offset: 2px;
+  }
+
+  /* Default border color */
+  * {
+    border-color: var(--color-border);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Convenience component classes (optional, but handy) */
+@layer components {
+  .app-shell {
+    background: radial-gradient(900px 500px at 10% -10%,
+        color-mix(in oklab, var(--color-secondary) 35%, transparent),
+        transparent 60%),
+      radial-gradient(900px 500px at 90% 0%,
+        color-mix(in oklab, var(--color-primary) 28%, transparent),
+        transparent 60%),
+      var(--color-bg);
+  }
+
+  .card {
+    background: linear-gradient(180deg,
+        color-mix(in oklab, var(--color-card-2) 92%, white 8%),
+        var(--color-card));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-soft), var(--shadow-inset);
+  }
+
+  .btn-primary {
+    background: linear-gradient(180deg,
+        color-mix(in oklab, var(--color-primary) 85%, white 15%),
+        var(--color-primary-2));
+    color: oklch(0.12 0.02 240);
+    border: 1px solid color-mix(in oklab, var(--color-primary) 55%, var(--color-border));
+    border-radius: calc(var(--radius) - 0.25rem);
+    box-shadow: 0 10px 25px oklch(0 0 0 / 0.35);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.05);
+  }
+
+  .btn-secondary {
+    background: linear-gradient(180deg,
+        color-mix(in oklab, var(--color-secondary) 85%, white 15%),
+        var(--color-secondary-2));
+    color: oklch(0.12 0.02 240);
+    border: 1px solid color-mix(in oklab, var(--color-secondary) 55%, var(--color-border));
+    border-radius: calc(var(--radius) - 0.25rem);
+  }
+
+  .link {
+    color: color-mix(in oklab, var(--color-primary) 85%, white 15%);
+    text-underline-offset: 4px;
+  }
+
+  .link:hover {
+    color: color-mix(in oklab, var(--color-primary) 70%, white 30%);
+    text-decoration: underline;
+  }
+}
+
+/* Optional utilities */
+@layer utilities {
+  .text-muted {
+    color: var(--color-muted);
+  }
+
+  .border-subtle {
+    border-color: var(--color-border);
+  }
+
+  .ring-brand {
+    --tw-ring-color: var(--color-ring);
+  }
 }
