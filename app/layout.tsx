@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Final Exam - Qureshi, Anique",
   description: "",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
