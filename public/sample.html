@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Payroll Calculator – Class Project</title>
+</head>
+
+<body>
+  <h1>Payroll Calculator (Hourly, Single Employee)</h1>
+  <p>This tool is for educational use only. Federal income tax uses a simple sample bracket table (not official IRS
+    tables). FICA rates reflect 2025 law.</p>
+
+  <h2>Inputs</h2>
+  <form id="calcForm">
+    <fieldset>
+      <legend>Pay Basics</legend>
+      <label>
+        Pay period:
+        <select id="payPeriod">
+          <option value="weekly">Weekly</option>
+          <option value="biweekly">Biweekly (every 2 weeks)</option>
+          <option value="semimonthly">Semi-monthly (24/yr)</option>
+          <option value="monthly">Monthly (12/yr)</option>
+        </select>
+      </label>
+      <br />
+      <label>
+        Hourly rate ($): <input id="hourlyRate" type="number" step="0.01" min="0" value="25" />
+      </label>
+      <br />
+      <label>
+        Total hours this period: <input id="hours" type="number" step="0.01" min="0" value="45" />
+      </label>
+      <br />
+      <label>
+        Optional: Year-to-date taxable wages (before this paycheck) ($):
+        <input id="ytdWages" type="number" step="0.01" min="0" value="0" />
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Assumptions</legend>
+      <p>Overtime is paid at <strong>1.5×</strong> after <strong>40 hours/week</strong>. For periods longer than a week,
+        the overtime threshold is scaled:</p>
+      <ul>
+        <li>Weekly: 40.00 hours</li>
+        <li>Biweekly: 80.00 hours</li>
+        <li>Semi-monthly: 43.33 hours (≈ 40 × 26 / 24)</li>
+        <li>Monthly: 173.33 hours (≈ 40 × 52 / 12)</li>
+      </ul>
+    </fieldset>
+
+    <fieldset>
+      <legend>Federal Income Tax – Sample Brackets (Illustrative)</legend>
+      <p>We annualize this paycheck, apply the brackets, then de-annualize to the period. These single-filer-style
+        brackets are for demonstration only:</p>
+      <table border="1" cellpadding="4">
+        <thead>
+          <tr>
+            <th>Bracket</th>
+            <th>Taxable income over</th>
+            <th>to</th>
+            <th>Rate</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>$0</td>
+            <td>$12,000</td>
+            <td>10%</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>$12,000</td>
+            <td>$47,500</td>
+            <td>12%</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>$47,500</td>
+            <td>$100,000</td>
+            <td>22%</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>$100,000</td>
+            <td>$190,000</td>
+            <td>24%</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td>$190,000</td>
+            <td>$245,000</td>
+            <td>32%</td>
+          </tr>
+          <tr>
+            <td>6</td>
+            <td>$245,000</td>
+            <td>$610,000</td>
+            <td>35%</td>
+          </tr>
+          <tr>
+            <td>7</td>
+            <td>$610,000</td>
+            <td>and up</td>
+            <td>37%</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>In a real payroll system you would use the current IRS Publication 15-T method with the employee’s W-4. This
+        simplified table is for a class project.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>FICA (real 2025 rates)</legend>
+      <ul>
+        <li>Social Security (employee): <strong>6.2%</strong> up to annual wage base <strong>$176,100</strong>.</li>
+        <li>Medicare (employee): <strong>1.45%</strong> on all wages.</li>
+        <li>Additional Medicare: <strong>0.9%</strong> on wages over <strong>$200,000</strong> (applied based on YTD +
+          this check).</li>
+      </ul>
+    </fieldset>
+
+    <button type="button" id="calcBtn">Calculate</button>
+    <button type="reset">Reset</button>
+  </form>
+
+  <h2>Results</h2>
+  <div id="results"></div>
+
+  <script>
+    // --- Constants (2025 FICA) ---
+    const SS_RATE = 0.062;           // 6.2%
+    const SS_WAGE_BASE_2025 = 176100; // $176,100
+    const MEDICARE_RATE = 0.0145;    // 1.45%
+    const ADDL_MED_RATE = 0.009;     // 0.9%
+    const ADDL_MED_THRESHOLD = 200000; // $200,000
+
+    // Sample annual federal brackets (illustrative)
+    // Each item: { upTo: number | Infinity, rate: number }
+    const SAMPLE_FIT_BRACKETS = [
+      { upTo: 12000, rate: 0.10 },
+      { upTo: 47500, rate: 0.12 },
+      { upTo: 100000, rate: 0.22 },
+      { upTo: 190000, rate: 0.24 },
+      { upTo: 245000, rate: 0.32 },
+      { upTo: 610000, rate: 0.35 },
+      { upTo: Infinity, rate: 0.37 }
+    ];
+
+    // Periods per year
+    const PERIODS_PER_YEAR = {
+      weekly: 52,
+      biweekly: 26,
+      semimonthly: 24,
+      monthly: 12
+    };
+
+    // Overtime threshold by period (scaled from 40 hrs/week)
+    const OT_THRESH_BY_PERIOD = {
+      weekly: 40,
+      biweekly: 80,
+      semimonthly: 40 * ( 26 / 24 ),  // ≈ 43.33
+      monthly: 40 * ( 52 / 12 )       // ≈ 173.33
+    };
+
+    function annualize( amountPerPeriod, period ) {
+      return amountPerPeriod * PERIODS_PER_YEAR[ period ];
+    }
+    function deannualize( annualAmount, period ) {
+      return annualAmount / PERIODS_PER_YEAR[ period ];
+    }
+
+    function computeFITAnnual( taxableAnnual, brackets ) {
+      let remaining = taxableAnnual;
+      let lower = 0;
+      let tax = 0;
+      for ( const b of brackets ) {
+        const cap = Math.min( remaining, b.upTo - lower );
+        if ( cap > 0 ) {
+          tax += cap * b.rate;
+          remaining -= cap;
+          lower = b.upTo;
+        }
+        if ( remaining <= 0 ) break;
+      }
+      return tax;
+    }
+
+    function formatMoney( n ) {
+      return n.toLocaleString( undefined, { style: 'currency', currency: 'USD' } );
+    }
+
+    document.getElementById( 'calcBtn' ).addEventListener( 'click', () => {
+      const period = document.getElementById( 'payPeriod' ).value;
+      const rate = Number( document.getElementById( 'hourlyRate' ).value || 0 );
+      const hours = Number( document.getElementById( 'hours' ).value || 0 );
+      const ytdBefore = Number( document.getElementById( 'ytdWages' ).value || 0 );
+
+      if ( rate < 0 || hours < 0 || ytdBefore < 0 ) {
+        document.getElementById( 'results' ).innerText = 'Inputs must be zero or positive.';
+        return;
+      }
+
+      // 1) Regular vs Overtime hours (approx threshold per period)
+      const otThreshold = OT_THRESH_BY_PERIOD[ period ];
+      const otHours = Math.max( 0, hours - otThreshold );
+      const regHours = Math.max( 0, hours - otHours );
+
+      // 2) Gross pay
+      const regularPay = regHours * rate;
+      const overtimePay = otHours * rate * 1.5;
+      const gross = regularPay + overtimePay;
+
+      // 3) Federal Income Tax (illustrative):
+      // annualize gross, compute tax on annual, then deannualize
+      const grossAnnual = annualize( gross, period );
+      const fitAnnual = computeFITAnnual( Math.max( 0, grossAnnual ), SAMPLE_FIT_BRACKETS );
+      const fitThisPeriod = deannualize( fitAnnual, period );
+
+      // 4) FICA (employee):
+      // Social Security: 6.2% up to wage base, considering YTD + this check.
+      const wagesThis = gross;
+      const ytdAfter = ytdBefore + wagesThis;
+
+      const ssTaxableThis =
+        ytdBefore >= SS_WAGE_BASE_2025
+          ? 0
+          : Math.max( 0, Math.min( ytdAfter, SS_WAGE_BASE_2025 ) - ytdBefore );
+
+      const ssTax = ssTaxableThis * SS_RATE;
+
+      // Medicare: 1.45% on all wages
+      const medicareRegular = wagesThis * MEDICARE_RATE;
+
+      // Additional Medicare 0.9% on wages > 200,000 (employee portion)
+      const addlMedTaxableThis =
+        ytdBefore >= ADDL_MED_THRESHOLD
+          ? wagesThis
+          : Math.max( 0, ytdAfter - ADDL_MED_THRESHOLD );
+
+      const addlMed = addlMedTaxableThis * ADDL_MED_RATE;
+
+      const ficaThisPeriod = ssTax + medicareRegular + addlMed;
+
+      // 5) Net pay
+      const net = gross - fitThisPeriod - ficaThisPeriod;
+
+      // 6) Output
+      const out = [];
+      out.push( '--- Pay Summary ---' );
+      out.push( 'Pay period: ' + period );
+      out.push( 'Hourly rate: ' + formatMoney( rate ) );
+      out.push( 'Hours (regular): ' + regHours.toFixed( 2 ) );
+      out.push( 'Hours (overtime @1.5x): ' + otHours.toFixed( 2 ) );
+      out.push( 'Regular pay: ' + formatMoney( regularPay ) );
+      out.push( 'Overtime pay: ' + formatMoney( overtimePay ) );
+      out.push( 'GROSS PAY: ' + formatMoney( gross ) );
+      out.push( '' );
+      out.push( '--- Federal Taxes (This Check) ---' );
+      out.push( 'Sample Federal Income Tax (illustrative): ' + formatMoney( fitThisPeriod ) );
+      out.push( 'Social Security (6.2% up to $176,100): ' + formatMoney( ssTax ) );
+      out.push( 'Medicare (1.45% all wages): ' + formatMoney( medicareRegular ) );
+      out.push( 'Additional Medicare (0.9% over $200,000 YTD): ' + formatMoney( addlMed ) );
+      out.push( 'Total FICA (SS + Medicare): ' + formatMoney( ficaThisPeriod ) );
+      out.push( '' );
+      out.push( 'NET PAY: ' + formatMoney( net ) );
+      out.push( '' );
+      out.push( '--- YTD Helper ---' );
+      out.push( 'YTD before this check: ' + formatMoney( ytdBefore ) );
+      out.push( 'YTD after this check: ' + formatMoney( ytdAfter ) );
+      out.push( '(Used only to decide Social Security cap and Additional Medicare)' );
+
+      document.getElementById( 'results' ).innerText = out.join( '\n' );
+    } );
+  </script>
+
+  <hr />
+  <h3>References</h3>
+  <ul>
+    <li>SSA Contribution &amp; Benefit Base (shows $176,100 for 2025).</li>
+    <li>IRS Topic 751 &amp; Pub. 15/Pub. 15-T (withholding methods) + IRS Additional Medicare Q&amp;A (0.9% over
+      $200,000).</li>
+    <li>This page uses a simplified FIT sample bracket table for demonstration, not official withholding tables.</li>
+  </ul>
+</body>
+
+</html>
