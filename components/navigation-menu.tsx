@@ -32,6 +32,20 @@ export function NavigationMenu() {
               </Button>
             </a>
 
+            <a
+              href="https://github.com/qcprof/home-auction"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[--color-fg] hover:bg-gray-800 hover:text-blue-400 cursor-pointer transition"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Git 1
+              </Button>
+            </a>
 
            </div>
         </div>
