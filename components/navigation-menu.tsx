@@ -15,6 +15,8 @@ export function NavigationMenu() {
               <Home className="mr-2 h-4 w-4" />
               Home
             </Button>
+
+
             <a
               href="https://home-auction.vercel.app/"
               target="_blank"
@@ -23,12 +25,14 @@ export function NavigationMenu() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-[--color-fg]"
+                className="text-[--color-fg] hover:bg-gray-800 hover:text-blue-400 cursor-pointer transition"
               >
                 <FileText className="mr-2 h-4 w-4" />
                 Exam 1
               </Button>
             </a>
+
+
            </div>
         </div>
 
